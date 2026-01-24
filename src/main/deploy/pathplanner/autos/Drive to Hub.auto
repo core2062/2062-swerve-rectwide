@@ -21,6 +21,43 @@
           "data": {
             "pathName": "Drive to Hub"
           }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 1.0
+          }
+        },
+        {
+          "type": "sequential",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "MotorOn"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "print hello"
+                }
+              },
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 5.0
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "MotorOff"
+                }
+              }
+            ]
+          }
         }
       ]
     }

@@ -19,4 +19,8 @@ public class MotorTurn extends Command {
     public void execute() {
         m_turn.setSpeed(m_speed);
     }
+    @Override
+    public boolean isFinished() {
+        return true;
+    }
 }
