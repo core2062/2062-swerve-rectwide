@@ -20,10 +20,11 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 
-import frc.robot.subsystems.Turnmotor;
-import frc.robot.commands.MotorTurn;
+import frc.robot.constants.Constants;
+import frc.robot.commands.ConveyerTurn;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.LauncherSubsystem;
 
 public class RobotContainer {
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
@@ -35,14 +36,15 @@ public class RobotContainer {
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
     private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
-
-    private final Turnmotor m_turn = new Turnmotor ();
+    
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
     private final CommandXboxController joystick = new CommandXboxController(0);
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+    private final LauncherSubsystem l_Launch = new LauncherSubsystem();
+    
     public RobotContainer() {
         configureBindings();
     }
@@ -84,13 +86,20 @@ public class RobotContainer {
 
         // Reset the field-centric heading on left bumper press.
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
-        joystick.rightBumper()
-            .onTrue(new MotorTurn (m_turn, 0.25))
-            .onFalse(new MotorTurn (m_turn, 0.0));
+        joystick.rightBumper();
+
+        /* shooter */
+        joystick.a().onTrue(new InstantCommand(()-> l_Launch.setShooterSpeed(Constants.ShooterConstants.upperMotorSpeed,Constants.ShooterConstants.lowerMotorSpeed)));
+        
+        joystick.pov(0)
+           .onTrue(new ConveyerTurn (l_Launch, 0.25))
+           .onFalse(new ConveyerTurn (l_Launch,0.0));
+
 
         drivetrain.registerTelemetry(logger::telemeterize);
 
         SmartDashboard.putData("Auto Mode", autoChooser);
+        
     }
 
     public Command getAutonomousCommand() {

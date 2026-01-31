@@ -4,20 +4,20 @@ import frc.robot.subsystems.LauncherSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import java.util.function.DoubleSupplier;
 
-public class MotorTurn extends Command {
-    private final LauncherSubsystem m_turn;
+public class ConveyerTurn extends Command {
+    private final LauncherSubsystem l_Launch;
     private final double m_speed;
 
 
-    public MotorTurn (LauncherSubsystem subsystem, double speed) {
-        m_turn = subsystem;
+    public ConveyerTurn(LauncherSubsystem subsystem, double speed) {
+        l_Launch = subsystem;
         m_speed = speed;
-        addRequirements(m_turn);
+        addRequirements(l_Launch);
     }
 
     @Override
     public void execute() {
-        m_turn.setConveyerSpeed(m_speed);
+        l_Launch.setConveyerSpeed(m_speed);
     }
     @Override
     public boolean isFinished() {

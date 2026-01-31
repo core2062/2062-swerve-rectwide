@@ -1,4 +1,4 @@
-package frc.robot.subsystems;
+package frc.robot.constants;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -12,7 +12,13 @@ public final class Constants {
   public static class JoystickConstants {
     public static final int kDriverControllerPort = 0;
   }
-  public static class MotorConstants {
-    public static final int FXMotorPort = 8;
-  }
+  public static class ShooterConstants {
+    public static final int UpperMotorPort = 8;
+    public static final int LowerMotorPort = 9;
+    public static final int ConveyerMotorPort = 10;
+
+    public static final double upperMotorSpeed = 0.18;
+    public static final double lowerMotorSpeed = 0.30;
+    //lower motor double the speed top
+}
 }
