@@ -19,6 +19,7 @@ public final class Constants {
 
     public static final double upperMotorSpeed = 0.18;
     public static final double lowerMotorSpeed = 0.30;
+    public static final double conveyerMotorSpeed = 0.50;
     //lower motor double the speed top
 }
 }

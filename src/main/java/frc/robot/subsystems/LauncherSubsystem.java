@@ -10,13 +10,11 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.Constants;
 
-
-//conveyer; up and down POV to unjam (consider, but only focus on One Direction(up))
-// press a to start motors and have them run for whole match, 
 
 public class LauncherSubsystem extends SubsystemBase {
   private TalonFX m_UpperShootMotor = new TalonFX(Constants.ShooterConstants.UpperMotorPort);
@@ -28,7 +26,8 @@ public LauncherSubsystem(){
   final TalonFXConfiguration commonConfigs = new TalonFXConfiguration()
    .withMotorOutput(
     new MotorOutputConfigs()
-    .withNeutralMode(NeutralModeValue.Brake)
+    .withNeutralMode(NeutralModeValue.Coast)
+    .withInverted(InvertedValue.Clockwise_Positive)
    )
    .withCurrentLimits(
     new CurrentLimitsConfigs()
@@ -36,19 +35,32 @@ public LauncherSubsystem(){
     .withStatorCurrentLimitEnable(true)
    );
 
-   final TalonFXConfiguration leaderConfigs = commonConfigs.clone()
+   final TalonFXConfiguration UpperShootMotor_configs = commonConfigs.clone()
    .withMotorOutput(
     commonConfigs.MotorOutput.clone()
     .withInverted(InvertedValue.Clockwise_Positive)
    );
 
-  var talonFXConfigurator = m_UpperShootMotor.getConfigurator();
-  var motorConfigs = new MotorOutputConfigs();
+   final TalonFXConfiguration LowerShootMotor_configs = commonConfigs.clone()
+   .withMotorOutput(
+    commonConfigs.MotorOutput.clone()
+    .withInverted(InvertedValue.CounterClockwise_Positive)
+   );
 
-  motorConfigs.Inverted = InvertedValue.Clockwise_Positive;
-  talonFXConfigurator.apply(motorConfigs);
+   final TalonFXConfiguration ConveyerMotor_configs = commonConfigs.clone();
 
-  m_UpperShootMotor.getConfigurator().apply(new TalonFXConfiguration());
+  m_UpperShootMotor.getConfigurator().apply(UpperShootMotor_configs);
+  m_LowerShootMotor.getConfigurator().apply(LowerShootMotor_configs);
+  m_ConveyerMotor.getConfigurator().apply(ConveyerMotor_configs);
+
+SmartDashboard.putNumber("desired UpperShootMotor RPS", Constants.ShooterConstants.upperMotorSpeed);
+SmartDashboard.putNumber("desired LowerShootMotor RPS", Constants.ShooterConstants.lowerMotorSpeed);
+SmartDashboard.putNumber("desired ConveyerMotor RPS", Constants.ShooterConstants.conveyerMotorSpeed);
+
+
+
+  
+  
 }
 
 public void setShooterSpeed(Double upperMotorSpeed, Double lowerMotorSpeed){
