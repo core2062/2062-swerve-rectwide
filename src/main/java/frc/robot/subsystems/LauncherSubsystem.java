@@ -57,10 +57,6 @@ SmartDashboard.putNumber("desired UpperShootMotor RPS", Constants.ShooterConstan
 SmartDashboard.putNumber("desired LowerShootMotor RPS", Constants.ShooterConstants.lowerMotorSpeed);
 SmartDashboard.putNumber("desired ConveyerMotor RPS", Constants.ShooterConstants.conveyerMotorSpeed);
 
-
-
-  
-  
 }
 
 public void setShooterSpeed(Double upperMotorSpeed, Double lowerMotorSpeed){
