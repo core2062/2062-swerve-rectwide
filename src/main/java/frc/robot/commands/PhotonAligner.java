@@ -2,6 +2,7 @@ package frc.robot.commands;
 
 import org.photonvision.PhotonCamera;
 
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.Joystick;
@@ -18,8 +19,10 @@ public class PhotonAligner extends Command {
     private PhotonCamera camera;
     private Joystick controller;
     private final SwerveRequest.RobotCentric driveRequest = new SwerveRequest.RobotCentric();
-    private final double anglekP=0.01;
-    private final double driveKP=0.5;
+    private final double anglekP=0.05;
+    private final double driveKP=0.3;
+    private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
+    //private final SlewRateLimiter rotationlimit=new SlewRateLimiter(3.0);
     private final double targetDistance=1; // in meters
     private double projectedDistance=0;
     private double projectedStraf=0;
@@ -64,25 +67,26 @@ public class PhotonAligner extends Command {
 
         // Auto-align when requested
         if (targetVisible==true) {
-            if(Math.abs(targetYaw)>5){
+            if(Math.abs(targetYaw)>6){
             // Driver wants auto-alignment to tag 7
             // And, tag 7 is in sight, so we can turn toward it.
             // Override the driver's turn command with an automatic one that turns toward the tag.
-            turn = Math.min(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity,Constants.Swerve.maxAngularVelocity);
+            turn = Math.min(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity/0.0508/*Wheel radius in meters */,Constants.Swerve.maxAngularVelocity);
         }
         double distanceError=targetDistance-projectedDistance;
-        if(Math.abs(distanceError)>0.025){
+        if(Math.abs(distanceError)>0.05){
         forward=Math.min(driveKP*Constants.Swerve.maxSpeed*distanceError,Constants.Swerve.maxSpeed);
         }
-        if(Math.abs(projectedStraf)>0.025){
+        if(Math.abs(projectedStraf)>0.05){
         strafe=Math.min(driveKP*Constants.Swerve.maxSpeed*projectedStraf,Constants.Swerve.maxSpeed);
         }
     }
-        Translation2d translation= new Translation2d(-strafe,-forward);
         // Command drivetrain motors based on target speeds
-    
+   double limitedForward=fowardlimit.calculate(forward);
+    double limitedStrafe=fowardlimit.calculate(strafe);
+    //double limitedTurn=rotationlimit.calculate(turn);
         s_Swerve.setControl(
-        driveRequest.withVelocityX(-forward).withVelocityY(strafe).withRotationalRate(-turn));
+        driveRequest.withVelocityX(-limitedForward).withVelocityY(limitedStrafe).withRotationalRate(-turn));
 
         // Put debug information to the dashboards
         SmartDashboard.putNumber("Raw Target Yaw", targetYaw);
