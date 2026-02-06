@@ -30,10 +30,10 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.PhotonVisionSubsystem;
 
 public class RobotContainer {
-    private final Joystick driver = new Joystick(0);
+    private final CommandXboxController joystick = new CommandXboxController(0);
     private final Joystick operator = new Joystick(1);
 
-    private final JoystickButton visionButton = new JoystickButton(driver, XboxController.Button.kA.value);
+    private final JoystickButton visionButton = new JoystickButton(joystick.getHID(), XboxController.Button.kX.value);
 
     private final PhotonVisionSubsystem pv_PhotonVisionSubsystem = new PhotonVisionSubsystem();
 
@@ -50,7 +50,7 @@ public class RobotContainer {
     private final Turnmotor m_turn = new Turnmotor ();
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
-    private final CommandXboxController joystick = new CommandXboxController(0);
+    
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
@@ -87,7 +87,7 @@ public class RobotContainer {
         ));
         visionButton.whileTrue(new PhotonAligner(drivetrain,
                                                 pv_PhotonVisionSubsystem.getCamera(),
-                                                driver
+                                                joystick.getHID()
                                                 ));
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.

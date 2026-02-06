@@ -3,8 +3,10 @@ package frc.robot.commands;
 import org.photonvision.PhotonCamera;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -17,17 +19,17 @@ import edu.wpi.first.math.geometry.Translation2d;
 public class PhotonAligner extends Command {
     private CommandSwerveDrivetrain s_Swerve;
     private PhotonCamera camera;
-    private Joystick controller;
+    private GenericHID controller;
     private final SwerveRequest.RobotCentric driveRequest = new SwerveRequest.RobotCentric();
     private final double anglekP=0.05;
     private final double driveKP=0.3;
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
-    //private final SlewRateLimiter rotationlimit=new SlewRateLimiter(3.0);
+    private final SlewRateLimiter rotationlimit=new SlewRateLimiter(4.0);
     private final double targetDistance=1; // in meters
     private double projectedDistance=0;
     private double projectedStraf=0;
-
-    public PhotonAligner(CommandSwerveDrivetrain s_Swerve, PhotonCamera camera, Joystick controller) {
+    private final SwerveRequest.RobotCentricFacingAngle driveToAngle= new SwerveRequest.RobotCentricFacingAngle();
+    public PhotonAligner(CommandSwerveDrivetrain s_Swerve, PhotonCamera camera, GenericHID controller) {
         this.s_Swerve = s_Swerve;
         this.camera = camera;
         this.controller = controller;
@@ -40,6 +42,8 @@ public class PhotonAligner extends Command {
         double forward = -controller.getRawAxis(1) * Constants.Swerve.maxSpeed;
         double strafe = -controller.getRawAxis(0) * Constants.Swerve.maxSpeed;
         double turn = -controller.getRawAxis(4) * Constants.Swerve.maxAngularVelocity;
+        Rotation2d currentRobotAngle = s_Swerve.getState().Pose.getRotation();
+        Rotation2d targetAngle = currentRobotAngle;
 
         // Read in relevant data from the Camera
         boolean targetVisible = false;
@@ -55,6 +59,7 @@ public class PhotonAligner extends Command {
                     if (target.getFiducialId() == 1) {
                         // Found Tag 1, record its information
                         targetYaw = target.getYaw();
+                        targetAngle = currentRobotAngle.plus(Rotation2d.fromDegrees(targetYaw));
                         targetVisible = true;
                         var translation = target.getBestCameraToTarget();
                         projectedDistance=translation.getX();
@@ -84,12 +89,16 @@ public class PhotonAligner extends Command {
         // Command drivetrain motors based on target speeds
    double limitedForward=fowardlimit.calculate(forward);
     double limitedStrafe=fowardlimit.calculate(strafe);
-    //double limitedTurn=rotationlimit.calculate(turn);
-        s_Swerve.setControl(
-        driveRequest.withVelocityX(-limitedForward).withVelocityY(limitedStrafe).withRotationalRate(-turn));
+    double limitedTurn=rotationlimit.calculate(turn);
+
+        s_Swerve.setControl(driveToAngle.withVelocityX(2.0)
+        .withVelocityY(0.0)
+        .withTargetDirection(Rotation2d.fromDegrees(45)
+        ));
 
         // Put debug information to the dashboards
         SmartDashboard.putNumber("Raw Target Yaw", targetYaw);
+        //SmartDashboard.put("Rotational Yaw",Rotation2d.fromDegrees(targetYaw));
         SmartDashboard.putNumber("Photon Turn Value", turn);
         SmartDashboard.putBoolean("Vision Target Visible", targetVisible);
         SmartDashboard.putNumber("Photon Forward", forward);
