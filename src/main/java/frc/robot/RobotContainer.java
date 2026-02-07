@@ -36,6 +36,7 @@ public class RobotContainer {
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
     private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
+    private final SwerveRequest.FieldCentric povDrive = new SwerveRequest.FieldCentric();
     
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
@@ -91,9 +92,29 @@ public class RobotContainer {
         /* shooter */
         joystick.a().onTrue(new InstantCommand(()-> l_Launch.setShooterSpeed(Constants.ShooterConstants.upperMotorSpeed,Constants.ShooterConstants.lowerMotorSpeed)));
         
+
+        // drivetrain.applyRequest(() ->
+        //         drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
+        //             .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
+        //             .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+        //     )
         joystick.pov(0)
-           .onTrue(new ConveyerTurn (l_Launch, 0.25))
-           .onFalse(new ConveyerTurn (l_Launch,0.0));
+        .whileTrue(
+            drivetrain.applyRequest(() ->
+                povDrive.withVelocityX(MaxSpeed)
+                .withVelocityY(0)
+                    .withRotationalRate(0)
+            ));
+         //    .onTrue(new ConveyerTurn (l_Launch, 0.25))
+        //    .onFalse(new ConveyerTurn (l_Launch,0.0));
+
+        joystick.pov(180)
+        .whileTrue(
+            drivetrain.applyRequest(() ->
+            povDrive.withVelocityX(-MaxSpeed)
+                .withVelocityY(0)
+                    .withRotationalRate(0)
+            ));
 
 
         drivetrain.registerTelemetry(logger::telemeterize);
