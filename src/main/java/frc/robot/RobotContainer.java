@@ -25,15 +25,17 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.PhotonAligner;
 import frc.robot.subsystems.Turnmotor;
 import frc.robot.commands.MotorTurn;
+import frc.robot.commands.AimToHub;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.PhotonVisionSubsystem;
 
 public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(0);
-    private final Joystick operator = new Joystick(1);
+    private final CommandXboxController operator = new CommandXboxController(1);
 
     private final JoystickButton visionButton = new JoystickButton(joystick.getHID(), XboxController.Button.kX.value);
+    private final JoystickButton hubAligner = new JoystickButton(joystick.getHID(), XboxController.Button.kY.value);
 
     private final PhotonVisionSubsystem pv_PhotonVisionSubsystem = new PhotonVisionSubsystem();
 
@@ -86,6 +88,10 @@ public class RobotContainer {
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
         ));
         visionButton.whileTrue(new PhotonAligner(drivetrain,
+                                                pv_PhotonVisionSubsystem.getCamera(),
+                                                joystick.getHID()
+                                                ));
+        hubAligner.whileTrue(new AimToHub(drivetrain,
                                                 pv_PhotonVisionSubsystem.getCamera(),
                                                 joystick.getHID()
                                                 ));

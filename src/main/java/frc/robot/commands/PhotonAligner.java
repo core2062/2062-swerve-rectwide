@@ -5,6 +5,7 @@ import org.photonvision.PhotonCamera;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
@@ -21,14 +22,13 @@ public class PhotonAligner extends Command {
     private PhotonCamera camera;
     private GenericHID controller;
     private final SwerveRequest.RobotCentric driveRequest = new SwerveRequest.RobotCentric();
-    private final double anglekP=0.05;
-    private final double driveKP=0.3;
+    private final double anglekP=0.3;
+    private final double driveKP=0.4;
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
-    private final SlewRateLimiter rotationlimit=new SlewRateLimiter(4.0);
+    private final SlewRateLimiter rotationlimit=new SlewRateLimiter(6.0);
     private final double targetDistance=1; // in meters
     private double projectedDistance=0;
     private double projectedStraf=0;
-    private final SwerveRequest.RobotCentricFacingAngle driveToAngle= new SwerveRequest.RobotCentricFacingAngle();
     public PhotonAligner(CommandSwerveDrivetrain s_Swerve, PhotonCamera camera, GenericHID controller) {
         this.s_Swerve = s_Swerve;
         this.camera = camera;
@@ -42,8 +42,7 @@ public class PhotonAligner extends Command {
         double forward = -controller.getRawAxis(1) * Constants.Swerve.maxSpeed;
         double strafe = -controller.getRawAxis(0) * Constants.Swerve.maxSpeed;
         double turn = -controller.getRawAxis(4) * Constants.Swerve.maxAngularVelocity;
-        Rotation2d currentRobotAngle = s_Swerve.getState().Pose.getRotation();
-        Rotation2d targetAngle = currentRobotAngle;
+
 
         // Read in relevant data from the Camera
         boolean targetVisible = false;
@@ -59,11 +58,8 @@ public class PhotonAligner extends Command {
                     if (target.getFiducialId() == 1) {
                         // Found Tag 1, record its information
                         targetYaw = target.getYaw();
-                        targetAngle = currentRobotAngle.plus(Rotation2d.fromDegrees(targetYaw));
                         targetVisible = true;
                         var translation = target.getBestCameraToTarget();
-                        projectedDistance=translation.getX();
-                        projectedStraf=translation.getY();
                     }
                 }
             }
@@ -72,11 +68,11 @@ public class PhotonAligner extends Command {
 
         // Auto-align when requested
         if (targetVisible==true) {
-            if(Math.abs(targetYaw)>6){
+            if(Math.abs(targetYaw)>4){
             // Driver wants auto-alignment to tag 7
             // And, tag 7 is in sight, so we can turn toward it.
             // Override the driver's turn command with an automatic one that turns toward the tag.
-            turn = Math.min(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity/0.0508/*Wheel radius in meters */,Constants.Swerve.maxAngularVelocity);
+            turn = Units.degreesToRadians(Math.min(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity/*Wheel Radius */,Constants.Swerve.maxAngularVelocity));
         }
         double distanceError=targetDistance-projectedDistance;
         if(Math.abs(distanceError)>0.05){
@@ -91,10 +87,10 @@ public class PhotonAligner extends Command {
     double limitedStrafe=fowardlimit.calculate(strafe);
     double limitedTurn=rotationlimit.calculate(turn);
 
-        s_Swerve.setControl(driveToAngle.withVelocityX(2.0)
-        .withVelocityY(0.0)
-        .withTargetDirection(Rotation2d.fromDegrees(45)
-        ));
+        s_Swerve.setControl(driveRequest.withVelocityX(-limitedForward)
+        .withVelocityY(limitedStrafe)
+        .withRotationalRate(-limitedTurn)
+        );
 
         // Put debug information to the dashboards
         SmartDashboard.putNumber("Raw Target Yaw", targetYaw);
