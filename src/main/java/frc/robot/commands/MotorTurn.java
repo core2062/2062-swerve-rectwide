@@ -2,7 +2,6 @@ package frc.robot.commands;
 
 import frc.robot.subsystems.LauncherSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
-import java.util.function.DoubleSupplier;
 
 public class MotorTurn extends Command {
     private final LauncherSubsystem m_turn;

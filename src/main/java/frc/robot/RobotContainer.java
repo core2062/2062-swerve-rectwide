@@ -22,8 +22,10 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 
 import frc.robot.constants.Constants;
 import frc.robot.commands.ConveyerTurn;
+import frc.robot.commands.LauncherTurn;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.IndexerSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
 
 public class RobotContainer {
@@ -44,7 +46,9 @@ public class RobotContainer {
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+    /* Subsystems */
     private final LauncherSubsystem l_Launch = new LauncherSubsystem();
+    private final IndexerSubsystem i_index = new IndexerSubsystem();
     
     public RobotContainer() {
         configureBindings();
@@ -90,33 +94,33 @@ public class RobotContainer {
         joystick.rightBumper();
 
         /* shooter */
-        joystick.a().onTrue(new InstantCommand(()-> l_Launch.setShooterSpeed(Constants.ShooterConstants.upperMotorSpeed,Constants.ShooterConstants.lowerMotorSpeed)));
-        
+            joystick.a()
+            .onTrue(new LauncherTurn(l_Launch, true))
+            .onFalse(new LauncherTurn(l_Launch, true));
 
-        // drivetrain.applyRequest(() ->
-        //         drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-        //             .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-        //             .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
-        //     )
-        joystick.pov(0)
-        .whileTrue(
-            drivetrain.applyRequest(() ->
-                povDrive.withVelocityX(MaxSpeed)
-                .withVelocityY(0)
-                    .withRotationalRate(0)
-            ));
-         //    .onTrue(new ConveyerTurn (l_Launch, 0.25))
-        //    .onFalse(new ConveyerTurn (l_Launch,0.0));
+            joystick.pov(0)
+                .onTrue(new ConveyerTurn (l_Launch,Constants.LauncherConstants.ConveyerMotorSpeedRps))
+                .onFalse(new ConveyerTurn (l_Launch,0.0));
 
-        joystick.pov(180)
-        .whileTrue(
-            drivetrain.applyRequest(() ->
-            povDrive.withVelocityX(-MaxSpeed)
-                .withVelocityY(0)
-                    .withRotationalRate(0)
-            ));
+        /* index */
+            joystick.rightBumper()
+                .onTrue(new InstantCommand(() ->
+                i_index.setIndexerSpeed(Constants.IndexerConstants.kIndexMotorSpeed)
+               ))
+               .onFalse(new InstantCommand(() ->
+                i_index.setIndexerSpeed(0)
+               ));
+
+            joystick.rightTrigger()
+              .onTrue(new InstantCommand(() ->
+                i_index.setIndexerSpeed(-Constants.IndexerConstants.kIndexMotorSpeed)
+               ))
+               .onFalse(new InstantCommand(() ->
+                i_index.setIndexerSpeed(0)
+               ));
 
 
+           
         drivetrain.registerTelemetry(logger::telemeterize);
 
         SmartDashboard.putData("Auto Mode", autoChooser);

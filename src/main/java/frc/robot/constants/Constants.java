@@ -12,14 +12,20 @@ public final class Constants {
   public static class JoystickConstants {
     public static final int kDriverControllerPort = 0;
   }
-  public static class ShooterConstants {
+  public static class LauncherConstants {
     public static final int UpperMotorPort = 8;
     public static final int LowerMotorPort = 9;
     public static final int ConveyerMotorPort = 10;
 
-    public static final double upperMotorSpeed = 0.18;
-    public static final double lowerMotorSpeed = 0.30;
-    public static final double conveyerMotorSpeed = 0.50;
+     public static final double UpperMotorSpeedRps = 2062/60;
+        public static final double LowerMotorSpeedRps  = 1030/60;
+        public static final double ConveyerMotorSpeedRps = 0.3;
     //lower motor double the speed top
 }
+public static class IndexerConstants {
+  public static final int kIndexMotorPort = 11;
+
+
+public static final double kIndexMotorSpeed = 0.30;
 }
+} 
