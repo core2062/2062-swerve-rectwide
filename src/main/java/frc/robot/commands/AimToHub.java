@@ -15,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.constants.Constants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.SwerveTrackingSubsystem;
+
+import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.math.geometry.Translation2d;
 public class AimToHub extends Command {
@@ -27,12 +29,14 @@ public class AimToHub extends Command {
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
     private final SlewRateLimiter rotationlimit=new SlewRateLimiter(6.0);
     private double distanceToHub=0;
-    private final double distanceAprilTagToHub=36.37; //inches
+    private final double distanceAprilTagToHub=12; //inches 36.37 for comp
     private double aprilTagDistance=0;
     private double aprilTagRotation=0;
     private double xDistance=0;
     private double yDistance=0;
     private double zDistance=0;
+    private double turnAngle=0;
+    private double limitedTurn=0;
       public AimToHub(CommandSwerveDrivetrain s_Swerve, PhotonCamera camera, GenericHID controller) {
         this.s_Swerve = s_Swerve;
         this.camera = camera;
@@ -43,7 +47,7 @@ public class AimToHub extends Command {
     }
     @Override
     public void execute(){
-        double turnAngle = -controller.getRawAxis(4) * Constants.Swerve.maxAngularVelocity;
+        double rotationOutput = -controller.getRawAxis(4) * Constants.Swerve.maxAngularVelocity;
         boolean targetVisible = false;
         var results = camera.getAllUnreadResults();
                 if (!results.isEmpty()) {
@@ -56,24 +60,34 @@ public class AimToHub extends Command {
                     if (target.getFiducialId() == 1) {
                         targetVisible = true;
                         var transform = target.getBestCameraToTarget();
-                        aprilTagRotation=Units.radiansToDegrees(transform.getRotation().getZ());
+                        aprilTagRotation=transform.getRotation().getZ();
                         xDistance=transform.getX();
                         yDistance=transform.getY();
                         zDistance=transform.getZ();
-                           if(aprilTagRotation>=0){
-                            aprilTagRotation-=90;
-                            }else{
-                                aprilTagRotation+=270;
+                           if(aprilTagRotation<0){
+                                aprilTagRotation+=6.2632/*2 pi */;
                             }
                         aprilTagDistance=Units.metersToInches(
                             Math.sqrt(Math.pow(xDistance,2)+Math.pow(yDistance, 2)+Math.pow(zDistance, 2)));
-                    }
+
+                        distanceToHub=Math.sqrt(Math.pow(distanceAprilTagToHub,2)+
+                            Math.pow(aprilTagDistance, 2)-
+                            2*distanceAprilTagToHub*aprilTagDistance*Math.abs(Math.cos(aprilTagRotation)));
+                        turnAngle=Math.asin(distanceAprilTagToHub*Math.sin(aprilTagRotation)/distanceToHub);
+                        
+                        }
                 }
             }
         }
-     
-        s_Swerve.setControl(driveRequest.withRotationalRate(-turnAngle));
+           if (targetVisible==true) {
+            if(Math.abs(turnAngle)>0.05){
+            rotationOutput = Math.min(turnAngle * anglekP * Constants.Swerve.maxAngularVelocity,Constants.Swerve.maxAngularVelocity);
+    }
+}
+    limitedTurn=rotationlimit.calculate(rotationOutput);
+        s_Swerve.setControl(driveRequest.withRotationalRate(-limitedTurn));
         SmartDashboard.putNumber("Rotation of the april tag",aprilTagRotation);
         SmartDashboard.putNumber("Finds distance to april tag", aprilTagDistance);
+        SmartDashboard.putNumber("Angle to turn to the hub", turnAngle);
     }
 }
