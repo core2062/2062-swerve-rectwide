@@ -2,6 +2,7 @@ package frc.robot.commands;
 
 import org.photonvision.PhotonCamera;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -29,7 +30,7 @@ public class AimToHub extends Command {
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
     private final SlewRateLimiter rotationlimit=new SlewRateLimiter(6.0);
     private double distanceToHub=0;
-    private final double distanceAprilTagToHub=12; //inches 36.37 for comp
+    private final double distanceAprilTagToHub=0.3048; //0.923798 meters for comp but 
     private double aprilTagDistance=0;
     private double aprilTagRotation=0;
     private double xDistance=0;
@@ -65,15 +66,14 @@ public class AimToHub extends Command {
                         yDistance=transform.getY();
                         zDistance=transform.getZ();
                            if(aprilTagRotation<0){
-                                aprilTagRotation+=6.2632/*2 pi */;
+                                aprilTagRotation+=Math.PI*2;
                             }
-                        aprilTagDistance=Units.metersToInches(
-                            Math.sqrt(Math.pow(xDistance,2)+Math.pow(yDistance, 2)+Math.pow(zDistance, 2)));
+                        aprilTagDistance=Math.sqrt(Math.pow(xDistance,2)+Math.pow(yDistance, 2)+Math.pow(zDistance, 2));//Distance formula
 
                         distanceToHub=Math.sqrt(Math.pow(distanceAprilTagToHub,2)+
                             Math.pow(aprilTagDistance, 2)-
-                            2*distanceAprilTagToHub*aprilTagDistance*Math.abs(Math.cos(aprilTagRotation)));
-                        turnAngle=Math.asin(distanceAprilTagToHub*Math.sin(aprilTagRotation)/distanceToHub);
+                            2*distanceAprilTagToHub*aprilTagDistance*Math.cos(aprilTagRotation));//Law of cosines
+                        turnAngle=Math.asin(distanceAprilTagToHub*Math.sin(aprilTagRotation)/distanceToHub);//Law sin
                         
                         }
                 }
@@ -81,7 +81,7 @@ public class AimToHub extends Command {
         }
            if (targetVisible==true) {
             if(Math.abs(turnAngle)>0.05){
-            rotationOutput = Math.min(turnAngle * anglekP * Constants.Swerve.maxAngularVelocity,Constants.Swerve.maxAngularVelocity);
+            rotationOutput = MathUtil.clamp(turnAngle * anglekP * Constants.Swerve.maxAngularVelocity,-Constants.Swerve.maxAngularVelocity,Constants.Swerve.maxAngularVelocity);
     }
 }
     limitedTurn=rotationlimit.calculate(rotationOutput);

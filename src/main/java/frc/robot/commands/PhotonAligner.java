@@ -2,6 +2,7 @@ package frc.robot.commands;
 
 import org.photonvision.PhotonCamera;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -22,10 +23,10 @@ public class PhotonAligner extends Command {
     private PhotonCamera camera;
     private GenericHID controller;
     private final SwerveRequest.RobotCentric driveRequest = new SwerveRequest.RobotCentric();
-    private final double anglekP=0.3;
+    private final double anglekP=0.4;
     private final double driveKP=0.4;
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
-    private final SlewRateLimiter rotationlimit=new SlewRateLimiter(6.0);
+    private final SlewRateLimiter rotationlimit=new SlewRateLimiter(7.0);
     private final double targetDistance=1; // in meters
     private double projectedDistance=0;
     private double projectedStraf=0;
@@ -60,6 +61,8 @@ public class PhotonAligner extends Command {
                         targetYaw = target.getYaw();
                         targetVisible = true;
                         var translation = target.getBestCameraToTarget();
+                        projectedDistance=translation.getX();
+                        projectedStraf=translation.getY();
                     }
                 }
             }
@@ -72,14 +75,14 @@ public class PhotonAligner extends Command {
             // Driver wants auto-alignment to tag 7
             // And, tag 7 is in sight, so we can turn toward it.
             // Override the driver's turn command with an automatic one that turns toward the tag.
-            turn = Units.degreesToRadians(Math.min(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity/*Wheel Radius */,Constants.Swerve.maxAngularVelocity));
+            turn = Units.degreesToRadians(MathUtil.clamp(targetYaw * anglekP * Constants.Swerve.maxAngularVelocity,-Constants.Swerve.maxAngularVelocity,Constants.Swerve.maxAngularVelocity));
         }
         double distanceError=targetDistance-projectedDistance;
         if(Math.abs(distanceError)>0.05){
-        forward=Math.min(driveKP*Constants.Swerve.maxSpeed*distanceError,Constants.Swerve.maxSpeed);
+        forward=MathUtil.clamp(driveKP*Constants.Swerve.maxSpeed*distanceError,-Constants.Swerve.maxSpeed,Constants.Swerve.maxSpeed);
         }
         if(Math.abs(projectedStraf)>0.05){
-        strafe=Math.min(driveKP*Constants.Swerve.maxSpeed*projectedStraf,Constants.Swerve.maxSpeed);
+        strafe=MathUtil.clamp(driveKP*Constants.Swerve.maxSpeed*projectedStraf,-Constants.Swerve.maxSpeed,Constants.Swerve.maxSpeed);
         }
     }
         // Command drivetrain motors based on target speeds
