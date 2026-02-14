@@ -27,7 +27,7 @@ public class PhotonAligner extends Command {
     private final double driveKP=0.4;
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(3.0);
     private final SlewRateLimiter rotationlimit=new SlewRateLimiter(7.0);
-    private final double targetDistance=1; // in meters
+    private final double targetDistance=3; // in meters
     private double projectedDistance=0;
     private double projectedStraf=0;
     public PhotonAligner(CommandSwerveDrivetrain s_Swerve, PhotonCamera camera, GenericHID controller) {
@@ -56,6 +56,8 @@ public class PhotonAligner extends Command {
             if (result.hasTargets()) {
                 // At least one AprilTag was seen by the camera
                 for (var target : result.getTargets()) {
+                    double poseAmbiguity = target.getPoseAmbiguity();
+                    if(poseAmbiguity<0.5){
                     if (target.getFiducialId() == 1) {
                         // Found Tag 1, record its information
                         targetYaw = target.getYaw();
@@ -63,6 +65,7 @@ public class PhotonAligner extends Command {
                         var translation = target.getBestCameraToTarget();
                         projectedDistance=translation.getX();
                         projectedStraf=translation.getY();
+                    }
                     }
                 }
             }
