@@ -56,7 +56,7 @@ public LauncherSubsystem(){
     commonConfigs.MotorOutput.clone()
     .withInverted(InvertedValue.CounterClockwise_Positive));
   
-var slot0Configs = new Slot0Configs();
+final var slot0Configs = new Slot0Configs();
     slot0Configs.kS = 0.1; // To account for fricont, add 0.1 V of static feed forward
     slot0Configs.kV = 0.12; // Kraken X60 is a 500 kV motor, 500 rpm per V = 8.33 rps per V, 1/8.33 = 0.12 vols / rotation / per second
     slot0Configs.kP = 0.11; // An error of 1 rotation per second results in 0.11 v output
@@ -71,9 +71,9 @@ var slot0Configs = new Slot0Configs();
     m_ConveyerMotor.getConfigurator().apply(ConveyerMotor_configs);
 
 
-    SmartDashboard.putNumber("desired UpperMotorSpeed", Constants.LauncherConstants.UpperMotorSpeedRps);
-    SmartDashboard.putNumber("desired  LowerMotorSpeed", Constants.LauncherConstants.LowerMotorSpeedRps);
-    SmartDashboard.putNumber("desired ConveyerSpeed", Constants.LauncherConstants.ConveyerMotorSpeedRps);
+    SmartDashboard.putNumber("desired UpperMotorSpeed", Constants.LauncherConstants.UpperMotorSpeedRpm);
+    SmartDashboard.putNumber("desired  LowerMotorSpeed", Constants.LauncherConstants.LowerMotorSpeedRpm);
+    SmartDashboard.putNumber("desired ConveyerSpeed", Constants.LauncherConstants.ConveyerMotorSpeedRpm);
 
 }
 

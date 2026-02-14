@@ -13,19 +13,27 @@ public final class Constants {
     public static final int kDriverControllerPort = 0;
   }
   public static class LauncherConstants {
-    public static final int UpperMotorPort = 8;
-    public static final int LowerMotorPort = 9;
-    public static final int ConveyerMotorPort = 10;
+    public static final int UpperMotorPort = 14; 
+    public static final int LowerMotorPort = 9; 
+    public static final int ConveyerMotorPort = 10; 
 
-     public static final double UpperMotorSpeedRps = 2062/60;
-        public static final double LowerMotorSpeedRps  = 1030/60;
-        public static final double ConveyerMotorSpeedRps = 0.3;
+     public static final double UpperMotorSpeedRpm = 2062;
+        public static final double LowerMotorSpeedRpm  = 1030;
+        public static final double ConveyerMotorSpeedRpm = 0.3;
     //lower motor double the speed top
 }
 public static class IndexerConstants {
   public static final int kIndexMotorPort = 11;
 
-
 public static final double kIndexMotorSpeed = 0.30;
+}
+public static class IntakeConstants {
+  public static final int kUpperIntakeMotorPort = 12;
+  public static final int kLowerIntakeMotorPort = 13;
+  public static final int kRotatingInakeMotorPort = 8;
+
+  public static final double kUpperIntakeMotorSpeed = 0.50;
+  public static final double kLowerIntakeMotorSpeed = 0.30;
+  public static final int kRotatingMotorDegree = 90;
 }
 } 

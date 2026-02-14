@@ -26,6 +26,7 @@ import frc.robot.commands.LauncherTurn;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.IndexerSubsystem;
+import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
 
 public class RobotContainer {
@@ -49,6 +50,7 @@ public class RobotContainer {
     /* Subsystems */
     private final LauncherSubsystem l_Launch = new LauncherSubsystem();
     private final IndexerSubsystem i_index = new IndexerSubsystem();
+    private final IntakeSubsystem i_intake = new IntakeSubsystem();
     
     public RobotContainer() {
         configureBindings();
@@ -93,13 +95,13 @@ public class RobotContainer {
         joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
         joystick.rightBumper();
 
-        /* shooter */
+        /* launcher */
             joystick.a()
             .onTrue(new LauncherTurn(l_Launch, true))
             .onFalse(new LauncherTurn(l_Launch, true));
 
             joystick.pov(0)
-                .onTrue(new ConveyerTurn (l_Launch,Constants.LauncherConstants.ConveyerMotorSpeedRps))
+                .onTrue(new ConveyerTurn (l_Launch,Constants.LauncherConstants.ConveyerMotorSpeedRpm))
                 .onFalse(new ConveyerTurn (l_Launch,0.0));
 
         /* index */
@@ -118,9 +120,41 @@ public class RobotContainer {
                .onFalse(new InstantCommand(() ->
                 i_index.setIndexerSpeed(0)
                ));
-
-
+        
+        /* intake  */
+            joystick.leftBumper()
+             .onTrue(new InstantCommand(() ->
+                i_intake.setIntakeSpeed(Constants.IntakeConstants.kUpperIntakeMotorSpeed, Constants.IntakeConstants.kLowerIntakeMotorSpeed) 
+                ))
+             .onFalse(new InstantCommand(() ->
+                i_intake.setIntakeSpeed(0.0, 0.0)
+             ));
            
+             joystick.leftTrigger()
+             .onTrue(new InstantCommand(() ->
+                i_intake.setIntakeSpeed(-Constants.IntakeConstants.kUpperIntakeMotorSpeed,-Constants.IntakeConstants.kLowerIntakeMotorSpeed) 
+                ))
+             .onFalse(new InstantCommand(() ->
+                i_intake.setIntakeSpeed(0.0, 0.0)
+             ));
+
+             
+            joystick.x()
+            .onTrue(new InstantCommand(() ->
+                i_intake.turnDegrees(Constants.IntakeConstants.kRotatingMotorDegree)
+                ))
+            .onFalse(new InstantCommand(() ->
+                i_intake.turnDegrees(0.0)
+                ));
+                
+            joystick.y()
+            .onTrue(new InstantCommand(() ->
+                i_intake.turnDegrees(-Constants.IntakeConstants.kRotatingMotorDegree)
+                ))
+            .onFalse(new InstantCommand(() ->
+                i_intake.turnDegrees(0.0)
+                ));
+                       
         drivetrain.registerTelemetry(logger::telemeterize);
 
         SmartDashboard.putData("Auto Mode", autoChooser);
