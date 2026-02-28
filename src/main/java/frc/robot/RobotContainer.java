@@ -30,13 +30,16 @@ import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
 
 public class RobotContainer {
-    private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
+    private double MaxSpeed;
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
 
     /* Setting up bindings for necessary control of the swerve drive platform */
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
             .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
+    private final SwerveRequest.RobotCentric roboDrivCentric = new SwerveRequest.RobotCentric()
+            .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Add a 10% deadband
     private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
     private final SwerveRequest.FieldCentric povDrive = new SwerveRequest.FieldCentric();
@@ -44,6 +47,8 @@ public class RobotContainer {
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
     private final CommandXboxController joystick = new CommandXboxController(0);
+    private final CommandXboxController operator = new CommandXboxController(1);
+
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
@@ -53,6 +58,7 @@ public class RobotContainer {
     private final IntakeSubsystem i_intake = new IntakeSubsystem();
     
     public RobotContainer() {
+        setMaxSpeed(false);
         configureBindings();
     }
 
@@ -92,20 +98,31 @@ public class RobotContainer {
         joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
 
         // Reset the field-centric heading on left bumper press.
-        joystick.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
-        joystick.rightBumper();
+        joystick.x().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+       
+        joystick.y().toggleOnTrue(drivetrain.applyRequest(() ->
+                roboDrivCentric.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
+                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
+                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+            )
+        );
+
+        joystick.leftTrigger()
+            .onTrue(new InstantCommand(()-> setMaxSpeed(true)))
+            .onFalse(new InstantCommand(()-> setMaxSpeed(false)));
+        
 
         /* launcher */
-            joystick.a()
+            operator.a()
             .onTrue(new LauncherTurn(l_Launch, true))
             .onFalse(new LauncherTurn(l_Launch, true));
 
-            joystick.pov(0)
+            operator.pov(0)
                 .onTrue(new ConveyerTurn (l_Launch,Constants.LauncherConstants.ConveyerMotorSpeedRpm))
                 .onFalse(new ConveyerTurn (l_Launch,0.0));
 
         /* index */
-            joystick.rightBumper()
+            operator.rightBumper()
                 .onTrue(new InstantCommand(() ->
                 i_index.setIndexerSpeed(Constants.IndexerConstants.kIndexMotorSpeed)
                ))
@@ -113,7 +130,7 @@ public class RobotContainer {
                 i_index.setIndexerSpeed(0)
                ));
 
-            joystick.rightTrigger()
+            operator.rightTrigger()
               .onTrue(new InstantCommand(() ->
                 i_index.setIndexerSpeed(-Constants.IndexerConstants.kIndexMotorSpeed)
                ))
@@ -122,7 +139,7 @@ public class RobotContainer {
                ));
         
         /* intake  */
-            joystick.leftBumper()
+            operator.leftBumper()
              .onTrue(new InstantCommand(() ->
                 i_intake.setIntakeSpeed(Constants.IntakeConstants.kUpperIntakeMotorSpeed, Constants.IntakeConstants.kLowerIntakeMotorSpeed) 
                 ))
@@ -130,7 +147,7 @@ public class RobotContainer {
                 i_intake.setIntakeSpeed(0.0, 0.0)
              ));
            
-             joystick.leftTrigger()
+             operator.leftTrigger()
              .onTrue(new InstantCommand(() ->
                 i_intake.setIntakeSpeed(-Constants.IntakeConstants.kUpperIntakeMotorSpeed,-Constants.IntakeConstants.kLowerIntakeMotorSpeed) 
                 ))
@@ -139,7 +156,7 @@ public class RobotContainer {
              ));
 
              
-            joystick.x()
+            operator.x()
             .onTrue(new InstantCommand(() ->
                 i_intake.turnDegrees(Constants.IntakeConstants.kRotatingMotorDegree)
                 ))
@@ -147,7 +164,7 @@ public class RobotContainer {
                 i_intake.turnDegrees(0.0)
                 ));
                 
-            joystick.y()
+            operator.y()
             .onTrue(new InstantCommand(() ->
                 i_intake.turnDegrees(-Constants.IntakeConstants.kRotatingMotorDegree)
                 ))
@@ -158,9 +175,22 @@ public class RobotContainer {
         drivetrain.registerTelemetry(logger::telemeterize);
 
         SmartDashboard.putData("Auto Mode", autoChooser);
-        
+       
     }
 
+    private double getMaxSpeed() {
+        return MaxSpeed;
+    }
+
+    private void setMaxSpeed(boolean slow) {
+        if (slow) {
+            MaxSpeed=.25 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
+        } else {
+            MaxSpeed=0.5 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
+        }
+        return;
+
+    }
     public Command getAutonomousCommand() {
         // // Simple drive forward auton
         // final var idle = new SwerveRequest.Idle();

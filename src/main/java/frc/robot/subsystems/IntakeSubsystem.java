@@ -40,7 +40,7 @@ public class IntakeSubsystem extends SubsystemBase {
     public double gearRatio = 81.0;
 
     private final CANBus kCANBus = CANBus.roboRIO();
-     private final CANdi candi = new CANdi(1, kCANBus);
+     private final CANdi candi = new CANdi(0, kCANBus);
        
 
 public IntakeSubsystem(){
@@ -71,27 +71,26 @@ public IntakeSubsystem(){
         );
 
     final TalonFXConfiguration RotatingMotor_configs = commonConfigs.clone();     
-    RotatingMotor_configs.HardwareLimitSwitch.withReverseLimitRemoteCANdiS1(candi);
+    RotatingMotor_configs.HardwareLimitSwitch.withForwardLimitRemoteCANdiS1(candi);
 
 // Configure PID gains (kP, kI, kD) for position control
-//TODO: these configs came from LauncherSubsystem, get from SysId?
     final TalonFXConfiguration configs = new TalonFXConfiguration();
         configs.Slot0.kP = 0.11; // Proportional Gain
         configs.Slot0.kI = 0.0;  // Integral Gain
         configs.Slot0.kD = 0.0;  // Derivative Gain
        
-final var toApply = new CANdiConfiguration();
-
-    toApply.DigitalInputs.S1CloseState = S1CloseStateValue.CloseWhenLow; 
-    toApply.DigitalInputs.S2CloseState = S2CloseStateValue.CloseWhenLow; // This example specifically assumes a hardware limit switch will close S2 to Ground. Default of CloseWhenNotFloating will also work
+final CANdiConfiguration toApply = new CANdiConfiguration();
+     toApply.DigitalInputs.S1CloseState = S1CloseStateValue.CloseWhenLow; 
+     toApply.DigitalInputs.S2CloseState = S2CloseStateValue.CloseWhenLow; // This example specifically assumes a hardware limit switch will close S2 to Ground. Default of CloseWhenNotFloating will also work
 
     candi.getConfigurator().apply(toApply);
     
-final var limitConfigs = new HardwareLimitSwitchConfigs();
-    limitConfigs.ReverseLimitSource = ReverseLimitSourceValue.RemoteCANdiS1;
-    limitConfigs.ReverseLimitRemoteSensorID = candi.getDeviceID();
-    limitConfigs.ReverseLimitEnable = true;
-    limitConfigs.ReverseLimitType = ReverseLimitTypeValue.NormallyOpen;
+
+  final HardwareLimitSwitchConfigs limitConfigs = new HardwareLimitSwitchConfigs();
+        limitConfigs.ForwardLimitSource = ForwardLimitSourceValue.RemoteCANdiS1;
+        limitConfigs.ForwardLimitRemoteSensorID = candi.getDeviceID();
+        limitConfigs.ReverseLimitSource = ReverseLimitSourceValue.RemoteCANdiS1;
+        limitConfigs.ReverseLimitRemoteSensorID = candi.getDeviceID();
 
 
     m_UpperIntakeMotor.getConfigurator().apply(UpperIntakeMotor_configs);
