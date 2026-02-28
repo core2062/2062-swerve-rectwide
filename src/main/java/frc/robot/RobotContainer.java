@@ -11,16 +11,19 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 
 import frc.robot.constants.Constants;
+import frc.robot.commands.AimToHub;
 import frc.robot.commands.ConveyerTurn;
 import frc.robot.commands.LauncherTurn;
 import frc.robot.generated.TunerConstants;
@@ -28,6 +31,7 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.IndexerSubsystem;
 import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
+import frc.robot.subsystems.PhotonVisionSubsystem;
 
 public class RobotContainer {
     private double MaxSpeed;
@@ -48,6 +52,7 @@ public class RobotContainer {
 
     private final CommandXboxController joystick = new CommandXboxController(0);
     private final CommandXboxController operator = new CommandXboxController(1);
+    private final JoystickButton hubAligner = new JoystickButton(joystick.getHID(), XboxController.Button.kA.value);
 
 
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
@@ -56,6 +61,7 @@ public class RobotContainer {
     private final LauncherSubsystem l_Launch = new LauncherSubsystem();
     private final IndexerSubsystem i_index = new IndexerSubsystem();
     private final IntakeSubsystem i_intake = new IntakeSubsystem();
+    private final PhotonVisionSubsystem pv_PhotonVisionSubsystem = new PhotonVisionSubsystem();
     
     public RobotContainer() {
         setMaxSpeed(false);
@@ -89,6 +95,10 @@ public class RobotContainer {
         joystick.b().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
         ));
+        hubAligner.whileTrue(new AimToHub(drivetrain,
+                                    pv_PhotonVisionSubsystem,
+                                    joystick.getHID()
+                                    ));
         
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.

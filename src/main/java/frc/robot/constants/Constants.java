@@ -36,4 +36,10 @@ public static class IntakeConstants {
   public static final double kLowerIntakeMotorSpeed = 0.30;
   public static final int kRotatingMotorDegree = 90;
 }
+public static final class Swerve{
+                    public static final double maxSpeed = 2.195; //TODO: This must be tuned to specific robot
+        /** Radians per Second */
+        public static final double maxAngularVelocity = Math.PI*3/2; //TODO: This must be tuned to specific robot
+        
+    }
 } 
