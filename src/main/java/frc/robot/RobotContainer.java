@@ -8,6 +8,7 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -23,12 +24,15 @@ import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.PhotonAligner;
+import frc.robot.constants.Constants;
 import frc.robot.subsystems.Turnmotor;
 import frc.robot.commands.MotorTurn;
 import frc.robot.commands.AimToHub;
+import frc.robot.commands.IntakeMovement;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.PhotonVisionSubsystem;
+import frc.robot.subsystems.FakeIntakeSubsystem;
 
 public class RobotContainer {
     private final CommandXboxController joystick = new CommandXboxController(0);
@@ -51,17 +55,23 @@ public class RobotContainer {
 
     private final Turnmotor m_turn = new Turnmotor ();
     private final Telemetry logger = new Telemetry(MaxSpeed);
+    private final FakeIntakeSubsystem m_fakeIntakeSubsystem = new FakeIntakeSubsystem();
 
     
 
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-
+    public final CommandSwerveDrivetrain drivetrain;
+    private final SendableChooser<Command> autoChooser;
+    
     public RobotContainer() {
+        drivetrain = TunerConstants.createDrivetrain();
+        setCommands();
+        drivetrain.configureAutoBuilder();
+        autoChooser = AutoBuilder.buildAutoChooser("Auto Paths");;
+        // setMaxSpeed(false);
         configureBindings();
     }
 
     /* Path follower */
-    private final SendableChooser<Command> autoChooser = AutoBuilder.buildAutoChooser("Auto Paths");;
 
     private void configureBindings() {
 
@@ -137,5 +147,12 @@ public class RobotContainer {
         //     drivetrain.applyRequest(() -> idle)
         // );
         return autoChooser.getSelected();
+    }
+
+    private void setCommands() {
+        NamedCommands.registerCommand("MotorOn",new MotorTurn(m_turn, 0.5));
+        NamedCommands.registerCommand("MotorOff",new MotorTurn(m_turn, 0.0));
+        NamedCommands.registerCommand("print hello", Commands.print("Hello"));
+        NamedCommands.registerCommand("IntakeMovement", new IntakeMovement(m_fakeIntakeSubsystem, Constants.FakeIntakeSubsystem.IntakeInAngle));
     }
 }

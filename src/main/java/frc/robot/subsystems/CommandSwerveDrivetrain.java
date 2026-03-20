@@ -145,8 +145,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-
-        configureAutoBuilder();
     }
 
     /**
@@ -171,8 +169,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-
-        configureAutoBuilder();
     }
 
     /**
@@ -205,7 +201,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         if (Utils.isSimulation()) {
             startSimThread();
         }
-        configureAutoBuilder();
     }
 
     /**
@@ -321,11 +316,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
     }
 
-    private void configureAutoBuilder() {
+    public void configureAutoBuilder() {
         // Load the RobotConfig fromt he GUI settings. You should probably store this in your Constants file
-         NamedCommands.registerCommand("MotorOn",new MotorTurn(m_turn, 0.5));
-        NamedCommands.registerCommand("MotorOff",new MotorTurn(m_turn, 0.0));
-        NamedCommands.registerCommand("print hello", Commands.print("Hello"));
          try {
             var config = RobotConfig.fromGUISettings();
             
