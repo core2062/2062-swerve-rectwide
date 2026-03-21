@@ -7,6 +7,7 @@ package frc.robot;
 import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.fasterxml.jackson.databind.deser.impl.CreatorCollector;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -19,6 +20,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -29,6 +31,7 @@ import frc.robot.subsystems.Turnmotor;
 import frc.robot.commands.MotorTurn;
 import frc.robot.commands.AimToHub;
 import frc.robot.commands.IntakeMovement;
+import frc.robot.commands.IntakeRollers;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.PhotonVisionSubsystem;
@@ -153,6 +156,25 @@ public class RobotContainer {
         NamedCommands.registerCommand("MotorOn",new MotorTurn(m_turn, 0.5));
         NamedCommands.registerCommand("MotorOff",new MotorTurn(m_turn, 0.0));
         NamedCommands.registerCommand("print hello", Commands.print("Hello"));
-        NamedCommands.registerCommand("IntakeMovement", new IntakeMovement(m_fakeIntakeSubsystem, Constants.FakeIntakeSubsystem.IntakeInAngle));
+        NamedCommands.registerCommand("IntakeMovement", createIntakeAgitator(m_fakeIntakeSubsystem));
+    }
+
+    public Command createIntakeAgitator(FakeIntakeSubsystem subsystem) {
+        return Commands.sequence(
+            Commands.print("Starting Sequence\n"),
+            Commands.print("IntakeWheelsForward\n"),
+            new IntakeRollers(subsystem, FakeIntakeSubsystem.IntakeWheelState.FORWARD),
+            Commands.print("IntakeMovement: OUT\n"),
+            new IntakeMovement(subsystem, () -> Constants.FakeIntakeSubsystem.IntakeOutAngle),
+            Commands.print("IntakeWheelsOff\n"),
+            new IntakeRollers(subsystem, FakeIntakeSubsystem.IntakeWheelState.OFF),
+            new WaitCommand(0.5),
+            Commands.print("IntakeWheelsReverse\n"),
+            new IntakeRollers(subsystem, FakeIntakeSubsystem.IntakeWheelState.REVERSE),
+            Commands.print("IntakeMovement: IN\n"),
+            new IntakeMovement(subsystem, () -> Constants.FakeIntakeSubsystem.IntakeInAngle),
+            Commands.print("IntakeWheelsOff\n"),
+            new IntakeRollers(subsystem, FakeIntakeSubsystem.IntakeWheelState.OFF)
+        ).repeatedly();
     }
 }

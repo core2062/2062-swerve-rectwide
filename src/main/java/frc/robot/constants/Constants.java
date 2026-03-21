@@ -35,7 +35,7 @@ public final class Constants {
     public static final double IntakeInAngle = 120.0;
     public static final double IntakeOutAngle = 0.0;
     public static final double IntakeDeadband = 0.02;
-    public static final double IntakeMovementRate = 0.001;
+    public static final double IntakeMovementRate = 0.5;
   }
   
   public static class LauncherConstants {
