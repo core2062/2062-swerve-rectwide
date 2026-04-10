@@ -18,11 +18,14 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
@@ -64,6 +67,11 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
+     private PhotonVisionSubsystem m_vision; 
+    StructPublisher<Pose2d> publisher = NetworkTableInstance.getDefault().getStructTopic("Estimated Pose", Pose2d.struct).publish();
+    public void setVisionSubsystem(PhotonVisionSubsystem vision) {
+        this.m_vision = vision;
+    }
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -259,6 +267,26 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 m_hasAppliedOperatorPerspective = true;
             });
         }
+         if (m_vision != null) {
+            var visionPose = m_vision.getEstimatedGlobalPose();
+            if (visionPose.isPresent()) {
+                var estimatedPose = visionPose.get();
+                publisher.set(estimatedPose.estimatedPose.toPose2d());
+                if(m_vision.findPoseAmbiguity() < 0.3){
+                    addVisionMeasurement(
+                        estimatedPose.estimatedPose.toPose2d(), 
+                        estimatedPose.timestampSeconds,
+                        VecBuilder.fill(0.2,0.2,0.2) // n1: x, n2: y, n3: angle high value is low trust
+                    );
+                }else{
+                    addVisionMeasurement(
+                        estimatedPose.estimatedPose.toPose2d(),
+                        estimatedPose.timestampSeconds, 
+                        VecBuilder.fill(999,999,999));
+                }
+                System.out.printf("X pose: %f, Y pose: %f, Rotation: %f, Time: %f", estimatedPose.estimatedPose.toPose2d().getX(), estimatedPose.estimatedPose.toPose2d().getY(), estimatedPose.estimatedPose.toPose2d().getRotation().getDegrees(), estimatedPose.timestampSeconds);
+            }
+         }
     }
 
     private void startSimThread() {

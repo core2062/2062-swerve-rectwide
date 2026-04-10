@@ -48,6 +48,7 @@ public class RobotContainer {
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
     private final SwerveRequest.FieldCentric povDrive = new SwerveRequest.FieldCentric();
     
+    
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
     private final CommandXboxController joystick = new CommandXboxController(0);
@@ -64,6 +65,7 @@ public class RobotContainer {
     private final PhotonVisionSubsystem pv_PhotonVisionSubsystem = new PhotonVisionSubsystem();
     
     public RobotContainer() {
+        drivetrain.setVisionSubsystem(pv_PhotonVisionSubsystem);
         setMaxSpeed(false);
         configureBindings();
     }
@@ -96,8 +98,7 @@ public class RobotContainer {
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
         ));
         hubAligner.whileTrue(new AimToHub(drivetrain,
-                                    pv_PhotonVisionSubsystem,
-                                    joystick.getHID()
+                                    pv_PhotonVisionSubsystem
                                     ));
         
         // Run SysId routines when holding back/start and X/Y.
