@@ -26,8 +26,12 @@ import edu.wpi.first.math.filter.SlewRateLimiter;
 public class PhotonVisionSubsystem extends SubsystemBase{
 
     //Constants
-    private final PhotonCamera backLeftcamera = new PhotonCamera("backLeftCamera"); 
-    private final PhotonCamera backRightcamera = new PhotonCamera("backRightCamera"); 
+    private final PhotonCamera cameras [] = {
+        new PhotonCamera("backLeftCamera"),
+        new PhotonCamera("backRightCamera"),
+        new PhotonCamera("shooterCamera")
+    };
+
     private final PIDController anglePID=new PIDController(0.9, 0, 0);
     private final PIDController drivePID=new PIDController(0.4,0,0);
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(6.0);
@@ -48,6 +52,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     private double rotationOutput=0.0;
     private boolean finished=false;
     private final double targetDistance=3.9624; // in meters
+    Optional<EstimatedRobotPose> visionEst = null;
 
     //Translations
     private final Transform3d tagToHub=new Transform3d(
@@ -58,16 +63,20 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         new Translation3d(0.0, 0.0, 0.0),
         new Rotation3d(0, 0, Units.degreesToRadians(0))
     );
-    private final Transform3d centerToBackLeftCamera = new Transform3d(
-        new Translation3d(-0.20955, 0.2286, 0.1524),
-        new Rotation3d(0, 0, Units.degreesToRadians(135))
-    );
-    private final Transform3d centerToBackRightCamera = new Transform3d(
-        new Translation3d(-0.20955, -0.2286, 0.1524),
-        new Rotation3d(0, 0, Units.degreesToRadians(225))
-    );
+    private final Transform3d backLeftCamTransform = new Transform3d(
+            new Translation3d(-0.20955, 0.2286, 0.1524),
+            new Rotation3d(Units.degreesToRadians(180), Units.degreesToRadians(45), Units.degreesToRadians(139.39871))
+            );
+    private final Transform3d backRightCamTransform = new Transform3d(
+            new Translation3d(-0.20955, -0.2286, 0.1524),
+            new Rotation3d(Units.degreesToRadians(90), Units.degreesToRadians(45), Units.degreesToRadians(220.60129))
+            );
+    private final Transform3d alignCamTransform = new Transform3d(
+            new Translation3d(0, 0.27305, 0.05715),
+            new Rotation3d(0, Units.degreesToRadians(45), 0)
+            );
     public PhotonCamera getCamera(){
-        return backLeftcamera;
+        return cameras[2];
     }
 
     private boolean isValidId(int id) {
@@ -86,30 +95,33 @@ public class PhotonVisionSubsystem extends SubsystemBase{
 
     //Pose translations
     private static final AprilTagFieldLayout tagLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
-    PhotonPoseEstimator backLeftPoseEstimator = new PhotonPoseEstimator(
+    PhotonPoseEstimator poseEstimators[] = {
+        new PhotonPoseEstimator(
         tagLayout, 
-        PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-        centerToBackLeftCamera
-    );
-    PhotonPoseEstimator backRightPoseEstimator = new PhotonPoseEstimator(
+        backLeftCamTransform
+        ),
+        new PhotonPoseEstimator(
         tagLayout, 
-        PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-        centerToBackLeftCamera
-    );
+        backRightCamTransform
+        ),
+        new PhotonPoseEstimator(
+        tagLayout, 
+        alignCamTransform
+        )
+};
     @Override 
     public void periodic(){
         targetVisible=false;
         finished=false;
-        var results = backLeftcamera.getAllUnreadResults();
+        var results = cameras[2].getAllUnreadResults();
         if (!results.isEmpty()) {
             var result = results.get(results.size() - 1);
+            targetVisible = true;
             if (result.hasTargets()) {
                 for (var target : result.getTargets()) {
                     int id=target.getFiducialId();
                     poseAmbiguity = target.getPoseAmbiguity();
                     if (isValidId(id)&&poseAmbiguity<0.4) {
-                        targetVisible = true;
-
                         //Coordinate translations 
                         Transform3d cameraToTarget = target.getBestCameraToTarget();
                         Pose3d robotPose = new Pose3d();
@@ -173,11 +185,26 @@ public class PhotonVisionSubsystem extends SubsystemBase{
             
     }
     
-    //Getters
+    //Pose estimator
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose() {
-        var result = backLeftcamera.getLatestResult();
-        return backLeftPoseEstimator.update(result);
+        double lowestAmbiguity = 1.0;
+        for (int index =0 ; index < cameras.length ; index++) {
+            for (var result : cameras[index].getAllUnreadResults()) {
+                if(result.hasTargets()){
+                double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
+                    if(currentAmbiguity < lowestAmbiguity){
+                        lowestAmbiguity = currentAmbiguity;
+                        visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
+                        if (visionEst.isEmpty()) {
+                            visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
+                        } 
+                    }
+                }
+            }
+        }
+        return visionEst;
     }
+    //Getters
     public double findPoseAmbiguity(){
         return poseAmbiguity;
     }
