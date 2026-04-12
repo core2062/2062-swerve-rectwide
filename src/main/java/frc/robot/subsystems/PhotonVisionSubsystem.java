@@ -10,12 +10,14 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.constants.Constants;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
 import org.photonvision.PhotonPoseEstimator.PoseStrategy;
+import org.photonvision.targeting.PhotonPipelineResult;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -31,13 +33,16 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         new PhotonCamera("backRightCamera"),
         new PhotonCamera("shooterCamera")
     };
-
+    
+    private final int shooterCameraIndex = 2;
     private final PIDController anglePID=new PIDController(0.9, 0, 0);
     private final PIDController drivePID=new PIDController(0.4,0,0);
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(6.0);
     private final SlewRateLimiter rotationlimit=new SlewRateLimiter(12.0);
+    private final double targetDistance=3.9624; // in meters
 
     //Non constant variables
+    private Optional<EstimatedRobotPose> visionEst = null;
     private double turnAngle=0;
     private double poseAmbiguity=0;
     private double limitedForward=0;
@@ -51,8 +56,8 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     private double forwardOutput=0.0;
     private double rotationOutput=0.0;
     private boolean finished=false;
-    private final double targetDistance=3.9624; // in meters
-    Optional<EstimatedRobotPose> visionEst = null;
+    List<PhotonPipelineResult> shooterResults = null;
+    
 
     //Translations
     private final Transform3d tagToHub=new Transform3d(
@@ -76,7 +81,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
             new Rotation3d(0, Units.degreesToRadians(45), 0)
             );
     public PhotonCamera getCamera(){
-        return cameras[2];
+        return cameras[shooterCameraIndex];
     }
 
     private boolean isValidId(int id) {
@@ -92,6 +97,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         double scale = Math.pow(10, places);
         return Math.round(value * scale) / scale;
     }
+    
 
     //Pose translations
     private static final AprilTagFieldLayout tagLayout = AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
@@ -113,71 +119,73 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     public void periodic(){
         targetVisible=false;
         finished=false;
-        var results = cameras[2].getAllUnreadResults();
-        if (!results.isEmpty()) {
-            var result = results.get(results.size() - 1);
-            targetVisible = true;
-            if (result.hasTargets()) {
-                for (var target : result.getTargets()) {
-                    int id=target.getFiducialId();
-                    poseAmbiguity = target.getPoseAmbiguity();
-                    if (isValidId(id)&&poseAmbiguity<0.4) {
-                        //Coordinate translations 
-                        Transform3d cameraToTarget = target.getBestCameraToTarget();
-                        Pose3d robotPose = new Pose3d();
-                        Pose3d hubPose = robotPose
-                          .transformBy(shooterToCamera)
-                          .transformBy(cameraToTarget)
-                          .transformBy(tagToHub);
-                        
+        var shooterResults = shooterCamResult();
+        if(shooterResults != null){
+            if (!shooterResults.isEmpty()) {
+                var result = shooterResults.get(shooterResults.size() - 1);
+                targetVisible = true;
+                if (result.hasTargets()) {
+                    for (var target : result.getTargets()) {
+                        int id=target.getFiducialId();
+                        poseAmbiguity = target.getPoseAmbiguity();
+                        if (isValidId(id)&&poseAmbiguity<0.4) {
+                            //Coordinate translations 
+                            Transform3d cameraToTarget = target.getBestCameraToTarget();
+                            Pose3d robotPose = new Pose3d();
+                            Pose3d hubPose = robotPose
+                            .transformBy(shooterToCamera)
+                            .transformBy(cameraToTarget)
+                            .transformBy(tagToHub);
+                            
 
-                        //Gets hub coordinates
-                        hubX=hubPose.getX();
-                        hubY=hubPose.getY();
-                        hubZ=hubPose.getZ();
+                            //Gets hub coordinates
+                            hubX=hubPose.getX();
+                            hubY=hubPose.getY();
+                            hubZ=hubPose.getZ();
 
-                        //Pythagorean theorem
-                        distanceToHubXY=Math.sqrt(Math.pow(hubX, 2)+Math.pow(hubY, 2));
-                        //90 degree translation due to camera position
-                        turnAngle=Math.atan2(hubY, hubX);
-                        turnAngleToTag=Math.atan2(cameraToTarget.getY(), cameraToTarget.getX());
-                        
-                        //PID calculations
-                        forwardOutput=drivePID.calculate(distanceToHubXY, targetDistance);
-                        rotationOutput=anglePID.calculate(turnAngle,0);
+                            //Pythagorean theorem
+                            distanceToHubXY=Math.sqrt(Math.pow(hubX, 2)+Math.pow(hubY, 2));
+                            //90 degree translation due to camera position
+                            turnAngle=Math.atan2(hubY, hubX);
+                            turnAngleToTag=Math.atan2(cameraToTarget.getY(), cameraToTarget.getX());
+                            
+                            //PID calculations
+                            forwardOutput=drivePID.calculate(distanceToHubXY, targetDistance);
+                            rotationOutput=anglePID.calculate(turnAngle,0);
 
-                        //Clamping max values
-                        rotationOutput = MathUtil.clamp(rotationOutput,-1,1)*Constants.Swerve.maxAngularVelocity;
-                        forwardOutput=MathUtil.clamp(forwardOutput,-1,1)*Constants.Swerve.maxSpeed;
+                            //Clamping max values
+                            rotationOutput = MathUtil.clamp(rotationOutput,-1,1)*Constants.Swerve.maxAngularVelocity;
+                            forwardOutput=MathUtil.clamp(forwardOutput,-1,1)*Constants.Swerve.maxSpeed;
 
-                        //Limiting acceleration
-                        limitedTurn=rotationlimit.calculate(rotationOutput);
-                        limitedForward=fowardlimit.calculate(forwardOutput);
+                            //Limiting acceleration
+                            limitedTurn=rotationlimit.calculate(rotationOutput);
+                            limitedForward=fowardlimit.calculate(forwardOutput);
 
-                        //Checks if within range
-                        if (anglePID.atSetpoint()) {
-                            limitedTurn = 0;
+                            //Checks if within range
+                            if (anglePID.atSetpoint()) {
+                                limitedTurn = 0;
+                            }
+                            if (drivePID.atSetpoint()) {
+                                limitedForward = 0;
+                            }
+                            if (anglePID.atSetpoint() && drivePID.atSetpoint()){
+                                finished = true;
+                            }
+                            
+                            //Debug values
+                            SmartDashboard.putNumber("Distance to hub", round(distanceToHubXY, 3));
+                            SmartDashboard.putNumber("Turn to hub", round(Units.radiansToDegrees(turnAngle), 3));
+                            SmartDashboard.putNumber("Raw turn to hub", round(Units.radiansToDegrees(turnAngleToTag), 3));
+                            SmartDashboard.putNumber("Tag accuracy", round(poseAmbiguity, 5));
+                            SmartDashboard.putNumber("Raw movement to hub", round(forwardOutput,3));
+                            SmartDashboard.putNumber("Raw rotation to hub", round(Units.radiansToDegrees(rotationOutput),3));
+                            SmartDashboard.putNumber("Limited movement to hub", round(limitedForward,3));
+                            SmartDashboard.putNumber("Limited rotation to hub", round(Units.radiansToDegrees(limitedTurn),3));
+
+                            break;
+                        }else{
+                            turnAngle=0;
                         }
-                        if (drivePID.atSetpoint()) {
-                            limitedForward = 0;
-                        }
-                        if (anglePID.atSetpoint() && drivePID.atSetpoint()){
-                            finished = true;
-                        }
-                        
-                        //Debug values
-                        SmartDashboard.putNumber("Distance to hub", round(distanceToHubXY, 3));
-                        SmartDashboard.putNumber("Turn to hub", round(Units.radiansToDegrees(turnAngle), 3));
-                        SmartDashboard.putNumber("Raw turn to hub", round(Units.radiansToDegrees(turnAngleToTag), 3));
-                        SmartDashboard.putNumber("Tag accuracy", round(poseAmbiguity, 5));
-                        SmartDashboard.putNumber("Raw movement to hub", round(forwardOutput,3));
-                        SmartDashboard.putNumber("Raw rotation to hub", round(Units.radiansToDegrees(rotationOutput),3));
-                        SmartDashboard.putNumber("Limited movement to hub", round(limitedForward,3));
-                        SmartDashboard.putNumber("Limited rotation to hub", round(Units.radiansToDegrees(limitedTurn),3));
-
-                        break;
-                    }else{
-                        turnAngle=0;
                     }
                 }
             }
@@ -188,16 +196,33 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     //Pose estimator
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose() {
         double lowestAmbiguity = 1.0;
-        for (int index =0 ; index < cameras.length ; index++) {
-            for (var result : cameras[index].getAllUnreadResults()) {
-                if(result.hasTargets()){
-                double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
-                    if(currentAmbiguity < lowestAmbiguity){
-                        lowestAmbiguity = currentAmbiguity;
-                        visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
-                        if (visionEst.isEmpty()) {
-                            visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
-                        } 
+        for (int index = 0 ; index < cameras.length ; index++) {
+            if(index != shooterCameraIndex){
+                for (var result : cameras[index].getAllUnreadResults()) {
+                    if(result.hasTargets()){
+                    double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
+                        if(currentAmbiguity < lowestAmbiguity){
+                            lowestAmbiguity = currentAmbiguity;
+                            visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
+                            if (visionEst.isEmpty()) {
+                                visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
+                            } 
+                        }
+                    }
+                }
+            } else {
+                if(shooterCamResult() != null){
+                    for (var result : shooterCamResult()) {
+                        if(result.hasTargets()){
+                            double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
+                            if(currentAmbiguity < lowestAmbiguity){
+                                lowestAmbiguity = currentAmbiguity;
+                                visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
+                                if (visionEst.isEmpty()) {
+                                    visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
+                                } 
+                            }
+                        }
                     }
                 }
             }
@@ -205,6 +230,12 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         return visionEst;
     }
     //Getters
+    public List<PhotonPipelineResult> shooterCamResult() {
+        if(cameras[2].getAllUnreadResults().size() != 0){
+            shooterResults = cameras[2].getAllUnreadResults();
+        }
+        return shooterResults;
+    }
     public double findPoseAmbiguity(){
         return poseAmbiguity;
     }

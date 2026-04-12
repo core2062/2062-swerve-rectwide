@@ -71,7 +71,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     StructPublisher<Pose2d> publisher = NetworkTableInstance.getDefault().getStructTopic("Estimated Pose", Pose2d.struct).publish();
     public void setVisionSubsystem(PhotonVisionSubsystem vision) {
         this.m_vision = vision;
+        
     }
+
 
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
@@ -268,9 +270,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             });
         }
         if (m_vision != null) {
-            if(m_vision.hasTarget()){
+            if(m_vision.getEstimatedGlobalPose() != null){
                 var visionPose = m_vision.getEstimatedGlobalPose();
-                if (visionPose.isPresent()) {
+                if(visionPose != null){
                     var estimatedPose = visionPose.get();
                     publisher.set(estimatedPose.estimatedPose.toPose2d());
                     if(m_vision.findPoseAmbiguity() < 0.3){

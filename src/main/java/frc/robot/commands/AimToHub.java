@@ -40,7 +40,7 @@ public class AimToHub extends Command {
             //limitedTurn=0;
            }
         //System.out.printf("raw turn: %f, raw forward: %f, limitedTurn: %f, limitedForward %f\n", rotationOutput, forward, limitedTurn, limitedForward);
-        s_Swerve.setControl(driveRequest.withVelocityY(-limitedForward).withRotationalRate(-limitedTurn));
+        s_Swerve.setControl(driveRequest.withVelocityX(-limitedForward).withRotationalRate(-limitedTurn));
     }
     @Override
     public boolean isFinished() {
