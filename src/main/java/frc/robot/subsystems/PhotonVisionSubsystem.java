@@ -30,7 +30,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     //Constants
     private final PhotonCamera cameras [] = {
         new PhotonCamera("backLeftCamera"),
-        new PhotonCamera("backRightCamera"),
+        new PhotonCamera("frontLeftCamera"),
         new PhotonCamera("shooterCamera")
     };
     
@@ -57,6 +57,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     private double rotationOutput=0.0;
     private boolean finished=false;
     List<PhotonPipelineResult> shooterResults = null;
+    double lowestAmbiguity = 1.0;
     
 
     //Translations
@@ -70,15 +71,15 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     );
     private final Transform3d backLeftCamTransform = new Transform3d(
             new Translation3d(-0.20955, 0.2286, 0.1524),
-            new Rotation3d(Units.degreesToRadians(180), Units.degreesToRadians(45), Units.degreesToRadians(139.39871))
+            new Rotation3d(Units.degreesToRadians(180), Units.degreesToRadians(45), Units.degreesToRadians(139.39871 + 90))
             );
-    private final Transform3d backRightCamTransform = new Transform3d(
-            new Translation3d(-0.20955, -0.2286, 0.1524),
-            new Rotation3d(Units.degreesToRadians(90), Units.degreesToRadians(45), Units.degreesToRadians(220.60129))
+    private final Transform3d frontLeftCamTransform = new Transform3d(
+            new Translation3d(0.20955, 0.2286, 0.1524),
+            new Rotation3d(Units.degreesToRadians(90), Units.degreesToRadians(45), Units.degreesToRadians(-40.60129 - 75))
             );
     private final Transform3d alignCamTransform = new Transform3d(
             new Translation3d(0, 0.27305, 0.05715),
-            new Rotation3d(0, Units.degreesToRadians(45), 0)
+            new Rotation3d(0, Units.degreesToRadians(45), Units.degreesToRadians(-90))
             );
     public PhotonCamera getCamera(){
         return cameras[shooterCameraIndex];
@@ -108,7 +109,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         ),
         new PhotonPoseEstimator(
         tagLayout, 
-        backRightCamTransform
+        frontLeftCamTransform
         ),
         new PhotonPoseEstimator(
         tagLayout, 
@@ -119,7 +120,22 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     public void periodic(){
         targetVisible=false;
         finished=false;
-        var shooterResults = shooterCamResult();
+        var shooterResults = cameras[2].getAllUnreadResults();
+        if(shooterResults != null){
+            setPoseAmbiguity(lowestAmbiguity);
+            for (var result : shooterResults) {
+                if(result.hasTargets()){
+                    double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
+                    if(currentAmbiguity < getPoseAmbiguity()){
+                        setPoseAmbiguity(currentAmbiguity);
+                        visionEst = poseEstimators[shooterCameraIndex].estimateCoprocMultiTagPose(result);
+                        if (visionEst.isEmpty()) {
+                            visionEst = poseEstimators[shooterCameraIndex].estimateLowestAmbiguityPose(result);
+                        } 
+                    }
+                }
+            }
+        }
         if(shooterResults != null){
             if (!shooterResults.isEmpty()) {
                 var result = shooterResults.get(shooterResults.size() - 1);
@@ -195,33 +211,19 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     
     //Pose estimator
     public Optional<EstimatedRobotPose> getEstimatedGlobalPose() {
-        double lowestAmbiguity = 1.0;
+        lowestAmbiguity = 1.0;
+        setPoseAmbiguity(lowestAmbiguity);
         for (int index = 0 ; index < cameras.length ; index++) {
             if(index != shooterCameraIndex){
                 for (var result : cameras[index].getAllUnreadResults()) {
                     if(result.hasTargets()){
                     double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
-                        if(currentAmbiguity < lowestAmbiguity){
-                            lowestAmbiguity = currentAmbiguity;
+                        if(currentAmbiguity < getPoseAmbiguity()){
+                            setPoseAmbiguity(lowestAmbiguity);
                             visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
                             if (visionEst.isEmpty()) {
                                 visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
                             } 
-                        }
-                    }
-                }
-            } else {
-                if(shooterCamResult() != null){
-                    for (var result : shooterCamResult()) {
-                        if(result.hasTargets()){
-                            double currentAmbiguity = result.getBestTarget().getPoseAmbiguity();
-                            if(currentAmbiguity < lowestAmbiguity){
-                                lowestAmbiguity = currentAmbiguity;
-                                visionEst = poseEstimators[index].estimateCoprocMultiTagPose(result);
-                                if (visionEst.isEmpty()) {
-                                    visionEst = poseEstimators[index].estimateLowestAmbiguityPose(result);
-                                } 
-                            }
                         }
                     }
                 }
@@ -230,14 +232,14 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         return visionEst;
     }
     //Getters
-    public List<PhotonPipelineResult> shooterCamResult() {
-        if(cameras[2].getAllUnreadResults().size() != 0){
-            shooterResults = cameras[2].getAllUnreadResults();
-        }
-        return shooterResults;
-    }
-    public double findPoseAmbiguity(){
+    public double getPoseAmbiguity(){
         return poseAmbiguity;
+    }
+    public Optional<EstimatedRobotPose> getVisionEst() {
+        return visionEst;
+    }
+    public void setPoseAmbiguity(double ambiguity) {
+        this.poseAmbiguity = ambiguity;
     }
     public boolean atSetpoint(){
         return finished;

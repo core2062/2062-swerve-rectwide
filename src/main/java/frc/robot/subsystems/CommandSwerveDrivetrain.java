@@ -275,7 +275,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 if(visionPose != null){
                     var estimatedPose = visionPose.get();
                     publisher.set(estimatedPose.estimatedPose.toPose2d());
-                    if(m_vision.findPoseAmbiguity() < 0.3){
+                    if(m_vision.getPoseAmbiguity() < 0.3){
                         addVisionMeasurement(
                             estimatedPose.estimatedPose.toPose2d(), 
                             estimatedPose.timestampSeconds,
