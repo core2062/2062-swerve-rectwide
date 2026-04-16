@@ -24,8 +24,10 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 
 import frc.robot.constants.Constants;
 import frc.robot.commands.AimToHub;
+import frc.robot.commands.AlignToTrench;
 import frc.robot.commands.ConveyerTurn;
 import frc.robot.commands.LauncherTurn;
+import frc.robot.commands.AlignToTrench;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.IndexerSubsystem;
@@ -117,6 +119,8 @@ public class RobotContainer {
                     .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
             )
         );
+        joystick.pov(0)
+            .onTrue(new AlignToTrench(drivetrain, pv_PhotonVisionSubsystem));
 
         joystick.leftTrigger()
             .onTrue(new InstantCommand(()-> setMaxSpeed(true)))

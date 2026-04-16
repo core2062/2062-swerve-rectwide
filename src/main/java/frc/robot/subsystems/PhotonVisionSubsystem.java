@@ -35,7 +35,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     };
     
     private final int shooterCameraIndex = 2;
-    private final PIDController anglePID=new PIDController(0.9, 0, 0);
+    private final PIDController anglePID=new PIDController(0.5, 0, 0);
     private final PIDController drivePID=new PIDController(0.4,0,0);
     private final SlewRateLimiter fowardlimit=new SlewRateLimiter(6.0);
     private final SlewRateLimiter rotationlimit=new SlewRateLimiter(12.0);
@@ -43,6 +43,13 @@ public class PhotonVisionSubsystem extends SubsystemBase{
 
     //Non constant variables
     private Optional<EstimatedRobotPose> visionEst = null;
+    private boolean trenchTargetVisible = false;
+    private boolean trenchFinished = false;
+    private double trenchX = 0.0;
+    private double trenchY = 0.0;
+    private double trenchTurnAngle = 0.0;
+    private double trenchRotation = 0.0;
+    private double limitedTrenchTurn =0.0;
     private double turnAngle=0;
     private double poseAmbiguity=0;
     private double limitedForward=0;
@@ -85,8 +92,11 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         return cameras[shooterCameraIndex];
     }
 
-    private boolean isValidId(int id) {
+    private boolean isValidHubId(int id) {
         return (id == 10 || id == 5 || id == 2 || id == 26 || id == 18 || id == 21);
+    }
+    private boolean isValidTrenchId(int id) {
+        return (id == 1 || id == 6 || id == 17 || id == 22 );
     }
     
     public PhotonVisionSubsystem(){
@@ -119,6 +129,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     @Override 
     public void periodic(){
         targetVisible=false;
+        trenchFinished = false;
         finished=false;
         var shooterResults = cameras[2].getAllUnreadResults();
         if(shooterResults != null){
@@ -144,7 +155,7 @@ public class PhotonVisionSubsystem extends SubsystemBase{
                     for (var target : result.getTargets()) {
                         int id=target.getFiducialId();
                         poseAmbiguity = target.getPoseAmbiguity();
-                        if (isValidId(id)&&poseAmbiguity<0.4) {
+                        if (isValidHubId(id) && poseAmbiguity < 0.4) {
                             //Coordinate translations 
                             Transform3d cameraToTarget = target.getBestCameraToTarget();
                             Pose3d robotPose = new Pose3d();
@@ -199,6 +210,22 @@ public class PhotonVisionSubsystem extends SubsystemBase{
                             SmartDashboard.putNumber("Limited rotation to hub", round(Units.radiansToDegrees(limitedTurn),3));
 
                             break;
+                        }else if (isValidTrenchId(id) & poseAmbiguity < 0.4){
+                            trenchTargetVisible = true;
+                            Transform3d cameraToTarget = target.getBestCameraToTarget();
+                            Pose3d robotPose = new Pose3d();
+                            Pose3d trenchPose = robotPose.transformBy(cameraToTarget);
+                            trenchX = trenchPose.getX();
+                            trenchY = trenchPose.getY();
+                            trenchTurnAngle = Math.atan2(trenchY, trenchX);
+                            trenchRotation = anglePID.calculate(trenchTurnAngle,0);
+                            trenchRotation = MathUtil.clamp(trenchRotation, -1, 1) * Constants.Swerve.maxAngularVelocity;
+                            limitedTrenchTurn=rotationlimit.calculate(trenchRotation);
+                            System.out.println(Units.radiansToDegrees(limitedTrenchTurn));
+                            if (anglePID.atSetpoint()) {
+                                limitedTrenchTurn = 0.0;
+                                trenchFinished = true;
+                            }
                         }else{
                             turnAngle=0;
                         }
@@ -234,6 +261,15 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     //Getters
     public double getPoseAmbiguity(){
         return poseAmbiguity;
+    }
+    public boolean hasTrenchTarget() {
+        return trenchTargetVisible;
+    }
+    public boolean atTrenchSetpoint(){
+        return trenchFinished;
+    }
+    public double getTrenchRotation() {
+        return limitedTrenchTurn;
     }
     public Optional<EstimatedRobotPose> getVisionEst() {
         return visionEst;
