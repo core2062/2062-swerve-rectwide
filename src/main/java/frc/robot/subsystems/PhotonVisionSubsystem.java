@@ -47,9 +47,15 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     private boolean trenchFinished = false;
     private double trenchX = 0.0;
     private double trenchY = 0.0;
+    private double trenchAprilTagRotation = 0.0;
+    private double fixedRotation = 0.0;
     private double trenchTurnAngle = 0.0;
     private double trenchRotation = 0.0;
-    private double limitedTrenchTurn =0.0;
+    private double trenchXSpeed = 0.0;
+    private double trenchYSpeed = 0.0;
+    private double limitedTrenchTurn = 0.0;
+    private double limitedTrenchX = 0.0;
+    private double limitedTrenchY = 0.0;
     private double turnAngle=0;
     private double poseAmbiguity=0;
     private double limitedForward=0;
@@ -216,15 +222,28 @@ public class PhotonVisionSubsystem extends SubsystemBase{
                             Pose3d robotPose = new Pose3d();
                             Pose3d trenchPose = robotPose.transformBy(cameraToTarget);
                             trenchX = trenchPose.getX();
-                            trenchY = trenchPose.getY();
+                            trenchAprilTagRotation = trenchPose.getRotation().getZ();
+                            if(fixRotation(trenchAprilTagRotation) > 0){
+                                fixedRotation = fixRotation(trenchAprilTagRotation);
+                            }
                             trenchTurnAngle = Math.atan2(trenchY, trenchX);
-                            trenchRotation = anglePID.calculate(trenchTurnAngle,0);
+                            trenchRotation = anglePID.calculate(fixedRotation,Math.PI);
+                            trenchXSpeed = drivePID.calculate(trenchX, 1.5);
+                            trenchYSpeed = drivePID.calculate(trenchY, 0);
+
                             trenchRotation = MathUtil.clamp(trenchRotation, -1, 1) * Constants.Swerve.maxAngularVelocity;
-                            limitedTrenchTurn=rotationlimit.calculate(trenchRotation);
-                            System.out.println(Units.radiansToDegrees(limitedTrenchTurn));
-                            if (anglePID.atSetpoint()) {
-                                limitedTrenchTurn = 0.0;
+                            trenchXSpeed = MathUtil.clamp(trenchXSpeed, -1, 1) * Constants.Swerve.maxSpeed;
+                            trenchYSpeed = MathUtil.clamp(trenchYSpeed, -1, 1) * Constants.Swerve.maxSpeed;
+
+                            limitedTrenchTurn = rotationlimit.calculate(trenchRotation);
+                            limitedTrenchX = fowardlimit.calculate(trenchXSpeed);
+                            limitedTrenchY = fowardlimit.calculate(trenchYSpeed);
+                            System.out.println(Units.radiansToDegrees(fixedRotation));
+                            if(drivePID.atSetpoint() && anglePID.atSetpoint()){
                                 trenchFinished = true;
+                                limitedTrenchX = 0.0;
+                                limitedTrenchY = 0.0;
+                                limitedTurn = 0.0;
                             }
                         }else{
                             turnAngle=0;
@@ -259,6 +278,13 @@ public class PhotonVisionSubsystem extends SubsystemBase{
         return visionEst;
     }
     //Getters
+    public double fixRotation(double angle){
+        if(angle < 0){
+            return 2 * Math.PI + angle;
+        }else{
+            return angle;
+        }
+    }
     public double getPoseAmbiguity(){
         return poseAmbiguity;
     }
@@ -270,6 +296,12 @@ public class PhotonVisionSubsystem extends SubsystemBase{
     }
     public double getTrenchRotation() {
         return limitedTrenchTurn;
+    }
+    public double getTrenchXMovement() {
+        return limitedTrenchX;
+    }
+    public double getTrenchYMovement() {
+        return limitedTrenchY;
     }
     public Optional<EstimatedRobotPose> getVisionEst() {
         return visionEst;

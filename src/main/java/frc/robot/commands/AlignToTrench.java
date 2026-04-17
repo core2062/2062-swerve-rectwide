@@ -14,7 +14,9 @@ public class AlignToTrench extends Command {
     //Puts robot in robot centric mode
     private final SwerveRequest.RobotCentric driveRequest = new SwerveRequest.RobotCentric();
 
-    private double limitedTurn=0;
+    private double limitedTurn = 0.0;
+    private double limitedXMovement = 0.0;
+    private double limitedYMovement = 0.0;
     private boolean finished = false;
 
     public AlignToTrench(CommandSwerveDrivetrain s_Swerve, PhotonVisionSubsystem p_vision) {
@@ -28,13 +30,15 @@ public class AlignToTrench extends Command {
     public void execute(){
            if (p_vision.hasTrenchTarget()==true) {
                 limitedTurn=p_vision.getTrenchRotation();
+                limitedXMovement = p_vision.getTrenchXMovement();
+                limitedYMovement = p_vision.getTrenchYMovement();
                 finished=p_vision.atTrenchSetpoint();
            }else{
             //limitedForward=0;
             //limitedTurn=0;
            }
         //System.out.printf("raw turn: %f, raw forward: %f, limitedTurn: %f, limitedForward %f\n", rotationOutput, forward, limitedTurn, limitedForward);
-        s_Swerve.setControl(driveRequest.withRotationalRate(-limitedTurn));
+        s_Swerve.setControl(driveRequest.withVelocityX(-limitedYMovement).withVelocityY(-limitedXMovement).withRotationalRate(-limitedTurn));
     }
     @Override
     public boolean isFinished() {
